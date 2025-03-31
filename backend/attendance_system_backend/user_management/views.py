@@ -1,4 +1,4 @@
-from rest_framework import viewsets, generics, permissions, status
+from rest_framework import viewsets, generics, permissions, status, serializers
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token # type: ignore
 from rest_framework.views import APIView # type: ignore
@@ -23,12 +23,13 @@ class UserViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action == 'create':
-            permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+            permission_classes = [permissions.AllowAny]  # Allow anyone to register
         elif self.action in ['retrieve', 'update', 'partial_update']:
             permission_classes = [permissions.IsAuthenticated, IsUserOrAdmin]
         else:
             permission_classes = [permissions.IsAuthenticated, IsAdminUser]
         return [permission() for permission in permission_classes]
+
     
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):

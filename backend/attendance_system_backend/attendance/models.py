@@ -4,12 +4,18 @@ from user_management.models import CustomUser
 
 class QRCode(models.Model):
     """
-    Model to store QR codes for check-in/check-out
+    Model to store QR codes for check-in/check-out with location constraints
     """
     code = models.CharField(max_length=255, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     is_active = models.BooleanField(default=True)
+    location_constraint = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Optional location constraint in format 'lat,lng,radius_meters'"
+    )
 
     def __str__(self):
         return f"QR Code {self.code[:10]}... | Expires: {self.expires_at}"

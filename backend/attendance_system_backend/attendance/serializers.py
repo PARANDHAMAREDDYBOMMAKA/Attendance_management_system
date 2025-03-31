@@ -37,6 +37,7 @@ class CheckInSerializer(serializers.Serializer):
     face_image = serializers.CharField(required=False)  # Base64 encoded image
     
     def validate_qr_code_data(self, value):
+        from .models import QRCode
         try:
             qr_code = QRCode.objects.get(code=value, is_active=True)
             if qr_code.is_expired():
@@ -46,6 +47,7 @@ class CheckInSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid QR code")
 
     def create(self, validated_data):
+        from .models import AttendanceRecord, AttendanceLog
         user = self.context['request'].user
         
         # Process face image if provided
@@ -60,8 +62,8 @@ class CheckInSerializer(serializers.Serializer):
                     name=f"{uuid.uuid4()}.{ext}"
                 )
         
-        # Check if a record for today already exists
-        today = validated_data.get('date', None)
+        # Determine today's date
+        today = self.context.get('date', None)
         try:
             record = AttendanceRecord.objects.get(user=user, date=today)
             # Update existing record for check-in
@@ -90,7 +92,6 @@ class CheckInSerializer(serializers.Serializer):
             }
             if face_image:
                 record_data['face_image_check_in'] = face_image
-            
             record = AttendanceRecord.objects.create(**record_data)
         
         # Create log entry
@@ -110,6 +111,7 @@ class CheckOutSerializer(serializers.Serializer):
     face_image = serializers.CharField(required=False)  # Base64 encoded image
     
     def validate_qr_code_data(self, value):
+        from .models import QRCode
         try:
             qr_code = QRCode.objects.get(code=value, is_active=True)
             if qr_code.is_expired():
@@ -119,6 +121,7 @@ class CheckOutSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid QR code")
     
     def validate(self, data):
+        from .models import AttendanceRecord
         user = self.context['request'].user
         today = self.context.get('date', None)
         
@@ -131,6 +134,7 @@ class CheckOutSerializer(serializers.Serializer):
             raise serializers.ValidationError("No check-in record found for today")
     
     def update(self, instance, validated_data):
+        from .models import AttendanceLog
         # Process face image if provided
         face_image = None
         if 'face_image' in validated_data and validated_data['face_image']:

@@ -1,131 +1,160 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Button, 
-  Typography, 
-  Paper, 
-  Card,
-  CardMedia,
-  CardContent,
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Paper,
+  Typography,
+  Button,
   CircularProgress,
-  Chip,
-  Alert
-} from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import { generateQRCode } from '../../services/attendance.service';
+  Alert,
+  Grid,
+} from "@mui/material";
+import QRCode from "react-qr-code";
+import { generateQRCode } from "../../services/attendance.service";
 
 const QRGenerator = () => {
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [error, setError] = useState("");
+  const [expiryTimer, setExpiryTimer] = useState(null);
 
-  const fetchQRCode = async () => {
+  const handleGenerate = async () => {
     setLoading(true);
-    setError('');
+    setError("");
+
     try {
-      const data = await generateQRCode();
-      setQrData(data);
-      
-      // Calculate time left in seconds
-      const expiresAt = new Date(data.expires_at);
-      const now = new Date();
-      const secondsLeft = Math.floor((expiresAt - now) / 1000);
-      setTimeLeft(secondsLeft);
+      const response = await generateQRCode();
+      setQrData(response);
+
+      if (response.expiry_time) {
+        const expiryTime = new Date(response.expiry_time).getTime();
+        const currentTime = new Date().getTime();
+        const timeLeft = Math.max(
+          0,
+          Math.floor((expiryTime - currentTime) / 1000)
+        );
+
+        setExpiryTimer(timeLeft);
+
+        const interval = setInterval(() => {
+          setExpiryTimer((prevTime) => {
+            if (prevTime <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prevTime - 1;
+          });
+        }, 1000);
+
+        // This return won't work here since we're not in a useEffect
+        // Should be handled in a separate useEffect
+      }
     } catch (err) {
-      setError('Failed to generate QR code. Please try again.');
-      console.error('QR code generation error:', err);
+      setError("Failed to generate QR code. Please try again.");
+      console.error("QR Code generation error:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  // Add a useEffect to handle the timer cleanup
   useEffect(() => {
-    fetchQRCode();
-  }, []);
+    let interval;
 
-  useEffect(() => {
-    if (timeLeft <= 0) return;
+    if (qrData?.expiry_time && expiryTimer > 0) {
+      interval = setInterval(() => {
+        setExpiryTimer((prevTime) => {
+          if (prevTime <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+    }
 
-    const intervalId = setInterval(() => {
-      setTimeLeft(prevTime => {
-        if (prevTime <= 1) {
-          clearInterval(intervalId);
-          return 0;
-        }
-        return prevTime - 1;
-      });
-    }, 1000);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [qrData, expiryTimer]);
 
-    return () => clearInterval(intervalId);
-  }, [timeLeft]);
-
-  // Format time left as minutes:seconds
-  const formatTimeLeft = () => {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  const formatTime = (seconds) => {
+    if (seconds === null) return "";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', mt: 4 }}>
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom align="center">
-          QR Code Generator
-        </Typography>
-        <Typography variant="body1" color="textSecondary" paragraph align="center">
-          Generate a QR code for attendance check-in/check-out
-        </Typography>
+    <Grid container spacing={2} justifyContent="center">
+      <Grid item xs={12} md={8} lg={6}>
+        <Paper elevation={3} sx={{ p: 4, textAlign: "center" }}>
+          <Typography variant="h5" gutterBottom>
+            Generate Attendance QR Code
+          </Typography>
 
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ my: 2 }}>
+              {error}
+            </Alert>
+          )}
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : qrData ? (
-          <Card sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-              <CardMedia
-                component="img"
-                image={qrData.qr_image}
-                alt="QR Code"
-                sx={{ width: 250, height: 250 }}
-              />
+          {qrData ? (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                my: 3,
+              }}
+            >
+              <Box
+                sx={{
+                  p: 3,
+                  border: "1px solid #e0e0e0",
+                  borderRadius: 2,
+                  backgroundColor: "#fff",
+                  mb: 2,
+                }}
+              >
+                <QRCode
+                  value={qrData.code}
+                  size={200}
+                  level="H"
+                  // Fix: Changed from includeMargin to includemargin
+                  includemargin={true}
+                />
+              </Box>
+              <Typography variant="body1" gutterBottom>
+                Code: {qrData.code}
+              </Typography>
+              <Typography
+                variant="body1"
+                color={expiryTimer < 30 ? "error" : "text.secondary"}
+              >
+                Expires in: {formatTime(expiryTimer)}
+              </Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleGenerate}
+                sx={{ mt: 2 }}
+              >
+                Generate New QR
+              </Button>
             </Box>
-            <CardContent sx={{ textAlign: 'center' }}>
-              {timeLeft > 0 ? (
-                <>
-                  <Chip 
-                    label={`Expires in ${formatTimeLeft()}`} 
-                    color="primary" 
-                    sx={{ mb: 1 }}
-                  />
-                  <Typography variant="body2" color="textSecondary">
-                    Code: {qrData.code.substring(0, 8)}...
-                  </Typography>
-                </>
-              ) : (
-                <Typography variant="body1" color="error">
-                  QR Code has expired
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
-
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<RefreshIcon />}
-          onClick={fetchQRCode}
-          fullWidth
-          disabled={loading}
-        >
-          Generate New QR Code
-        </Button>
-      </Paper>
-    </Box>
+          ) : (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleGenerate}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} /> : "Generate QR Code"}
+            </Button>
+          )}
+        </Paper>
+      </Grid>
+    </Grid>
   );
 };
 

@@ -37,8 +37,6 @@ export const calculateTimeDifference = (startTime, endTime) => {
 // Format attendance status with proper capitalization
 export const formatStatus = (status) => {
   if (!status) return "-";
-
-  // Convert underscores to spaces and capitalize first letter of each word
   return status
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -52,11 +50,9 @@ export const base64ToFile = (base64String, filename, mimeType) => {
   const bstr = atob(arr[1]);
   let n = bstr.length;
   const u8arr = new Uint8Array(n);
-
   while (n--) {
     u8arr[n] = bstr.charCodeAt(n);
   }
-
   return new File([u8arr], filename, { type: mimeType || mime });
 };
 
@@ -86,14 +82,11 @@ export const getStatusColor = (status) => {
 // Format duration in minutes to hours and minutes
 export const formatDuration = (minutes) => {
   if (!minutes && minutes !== 0) return "-";
-
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-
   if (hours === 0) {
     return `${remainingMinutes}m`;
   }
-
   return `${hours}h ${remainingMinutes}m`;
 };
 
@@ -104,18 +97,14 @@ export const isWorkingHours = (
   workEnd = "17:00"
 ) => {
   if (!time) return false;
-
   const timeObj = new Date(time);
   const hours = timeObj.getHours();
   const minutes = timeObj.getMinutes();
-
   const [startHour, startMinute] = workStart.split(":").map(Number);
   const [endHour, endMinute] = workEnd.split(":").map(Number);
-
   const timeValue = hours * 60 + minutes;
   const startValue = startHour * 60 + startMinute;
   const endValue = endHour * 60 + endMinute;
-
   return timeValue >= startValue && timeValue <= endValue;
 };
 
