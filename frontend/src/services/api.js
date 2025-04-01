@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api"; // Updated common API root
+const API_URL = "http://localhost:8000/api"; // Ensure correct backend URL
 
 const api = axios.create({
   baseURL: API_URL,
@@ -9,7 +9,7 @@ const api = axios.create({
   },
 });
 
-// Request interceptor for adding the auth token
+// Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -26,6 +26,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
+      console.warn("Unauthorized! Redirecting to login.");
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";
